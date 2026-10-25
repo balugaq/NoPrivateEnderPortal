@@ -1,0 +1,21 @@
+# Dependabot 版本更新配置
+# 说明：本插件对 Paper API 与 MockBukkit 的版本高度敏感，二者必须与目标/测试用的
+# Minecraft 服务端版本严格对齐，不能由 Dependabot 自动升级，否则极易出现
+# 「API 不匹配 / 测试跑不起来」的问题。因此这里显式屏蔽它们，其余构建依赖（Gradle 插件等）
+# 仍按 monthly 节奏自动更新。
+
+version: 2
+updates:
+  - package-ecosystem: "gradle"
+    directory: "/"
+    schedule:
+      interval: "monthly"
+    # 屏蔽 Paper API 与 MockBukkit：二者绑定 Minecraft 服务端版本，需人工对齐后手动升级
+    ignore:
+      - dependency-name: "io.papermc.paper:paper-api"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+      - dependency-name: "org.mockbukkit.mockbukkit:mockbukkit-v1.21"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]
+      # run-paper 插件负责拉起测试服务端，其版本需与上方 paper-api 测试版本协同，同样人工管理
+      - dependency-name: "xyz.jpenilla.run-paper"
+        update-types: ["version-update:semver-major", "version-update:semver-minor", "version-update:semver-patch"]

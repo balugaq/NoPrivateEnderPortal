@@ -1,9 +1,18 @@
 name: '${name}'
 version: '${version}'
-main: com.balugaq.myproject.MyProject
-api-version: '1.21'
-depend: []
-softdepend: []
-loadBefore: []
+main: com.balugaq.noprivateenderportal.NoPrivateEnderPortal
+api-version: '1.17'
+description: 'Prevents non-exempt players from creating private end portals by placing eyes of ender into end portal frames.'
 authors: [balugaq]
-description: 'This is MyProject's description'
+commands:
+  npe:
+    description: 'NoPrivateEnderPortal admin command'
+    usage: '/npe reload'
+    permission: noprivateenderportal.admin
+permissions:
+  noprivateenderportal.admin:
+    default: op
+    description: 'Allows reloading the NoPrivateEnderPortal configuration'
+  noprivateenderportal.bypass:
+    default: false
+    description: 'Bypasses the end portal restriction'

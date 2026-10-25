@@ -1,0 +1,21 @@
+# ============================================================================
+#  NoPrivateEnderPortal language file (en_US)
+# ============================================================================
+# Notes:
+#   - `language: en_US` in config.yml selects this file (lang/<language>.yml).
+#   - On first startup the built-in language file is copied to
+#     plugins/NoPrivateEnderPortal/lang/; from then on the file on disk wins,
+#     and the built-in copy is only used as a fallback for missing keys.
+#   - Color codes use & (e.g. &a green); placeholders are {0} {1} ... replaced
+#     in the order of the arguments passed to sendMessage/t.
+#   - Single and double quotes inside the text need no escaping.
+# ============================================================================
+
+# Shown when a non-exempt player tries to place an eye of ender into an end portal frame
+denied: "&c[NoPrivateEnderPortal] You are not allowed to create an end portal!"
+
+# /npe reload succeeded
+reload-done: "&a[NoPrivateEnderPortal] Configuration reloaded."
+
+# Usage hint for incorrect /npe arguments
+usage: "&eUsage: /npe reload"

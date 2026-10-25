@@ -1,16 +1,24 @@
+# Gradle Version Catalog
+# 依赖集中管理：build.gradle.kts 里用 `libs.xxx` 引用。
+# alias 一律 kebab-case，Kotlin DSL 访问时自动转驼峰（如 `paper-api` → `libs.paper.api`）。
+
 [versions]
-shadow = "9.3.2"
-paper = "1.21.11-R0.1-SNAPSHOT"
-lombok = "1.18.46"
-junit = "5.11.4"
-mockito = "5.14.2"
+# 主编译目标：最低运行版本 1.17，compileOnly 锁定 1.17.1
+paper = "1.17.1-R0.1-SNAPSHOT"
+# 测试专用：与 MockBukkit v1.21 的 Paper-Version(1.21.11) 对齐，只进 test classpath
+paper-test = "1.21.11-R0.1-SNAPSHOT"
+mockbukkit = "4.116.3"
+junit = "6.0.3"
+shadow = "9.6.1"
+run-paper = "3.1.0"
 
 [libraries]
 paper-api = { module = "io.papermc.paper:paper-api", version.ref = "paper" }
-lombok = { module = "org.projectlombok:lombok", version.ref = "lombok" }
-libby-bukkit = { module = "net.byteflux:libby-bukkit", version = "1.3.1" }
+paper-api-test = { module = "io.papermc.paper:paper-api", version.ref = "paper-test" }
+mockbukkit-v121 = { module = "org.mockbukkit.mockbukkit:mockbukkit-v1.21", version.ref = "mockbukkit" }
 junit-jupiter = { module = "org.junit.jupiter:junit-jupiter", version.ref = "junit" }
-mockito-core = { module = "org.mockito:mockito-core", version.ref = "mockito" }
+junit-platform-launcher = { module = "org.junit.platform:junit-platform-launcher", version.ref = "junit" }
 
 [plugins]
 shadow = { id = "com.gradleup.shadow", version.ref = "shadow" }
+run-paper = { id = "xyz.jpenilla.run-paper", version.ref = "run-paper" }

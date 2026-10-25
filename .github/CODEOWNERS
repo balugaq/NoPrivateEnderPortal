@@ -1,0 +1,4 @@
+# 所有 Java 源文件由 balugaq 负责 review
+*.java @balugaq
+
+@balugaq

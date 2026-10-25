@@ -1,25 +1,17 @@
-import com.github.jengelman.gradle.plugins.shadow.tasks.ShadowJar
-import org.gradle.language.jvm.tasks.ProcessResources
+@file:Suppress("VulnerableLibrariesLocal", "UnstableApiUsage")
 
 plugins {
     java
     alias(libs.plugins.shadow)
-    id("xyz.jpenilla.run-paper") version "3.0.2"
-    id("maven-publish")
-    id("signing")
-    id("io.github.sgtsilvio.gradle.maven-central-publishing") version "0.5.0"
+    alias(libs.plugins.run.paper)
 }
 
 group = "io.github.balugaq"
-version = "0.0.1"
-
-java {
-    toolchain.languageVersion.set(JavaLanguageVersion.of(21))
-}
+version = "1.0.0"
 
 tasks.compileJava {
     options.encoding = "UTF-8"
-    options.release.set(21)
+    options.release = 17
 }
 
 tasks.withType<Javadoc>().configureEach {
@@ -40,151 +32,88 @@ tasks.withType<JavaExec>().configureEach {
 
 repositories {
     mavenCentral()
-    maven("https://oss.sonatype.org/content/groups/public/")
-    maven("https://oss.sonatype.org/content/repositories/snapshots")
-    maven("https://jitpack.io")
     maven("https://repo.papermc.io/repository/maven-public/")
-    maven("https://repo.alessiodp.com/releases/")
 }
 
 dependencies {
-    implementation(libs.libby.bukkit)
+    // 运行时最低 1.17：主代码只对 1.17.1 API 编译
     compileOnly(libs.paper.api)
-    compileOnly(libs.lombok)
-    annotationProcessor(libs.lombok)
 
-    // System-scoped local JARs
-    // compileOnly(fileTree(mapOf("dir" to "lib", "include" to listOf("*.jar"))))
-
+    // 测试基建：MockBukkit v1.21 的 Paper-Version 是 1.21.11，测试 classpath 必须对齐
+    testImplementation(libs.paper.api.test)
+    testImplementation(libs.mockbukkit.v121)
     testImplementation(libs.junit.jupiter)
-    testImplementation(libs.mockito.core)
+    testRuntimeOnly(libs.junit.platform.launcher)
 }
 
 tasks.test {
     useJUnitPlatform()
+    testLogging {
+        // MockBukkit 对未实现的 API 抛 AssumptionException 会静默跳过测试，
+        // 把 skipped 也打出来，避免「绿色构建其实啥都没验」
+        events("passed", "skipped", "failed")
+    }
 }
 
 tasks.jar {
     enabled = false
 }
 
-tasks.named<ProcessResources>("processResources") {
-    filesMatching("**/*.yml") {
-        expand(
-            mapOf(
-                "version" to project.version,
-                "name" to project.name
+tasks {
+    processResources {
+        // 只展开 plugin.yml 的 ${version}/${name}；lang/*.yml 保持原样，
+        // 避免 Groovy 模板引擎碰到语言文件里的特殊字符
+        filesMatching("plugin.yml") {
+            expand(
+                mapOf(
+                    "version" to project.version,
+                    "name" to project.name
+                )
             )
+        }
+    }
+
+    shadowJar {
+        archiveBaseName.set("NoPrivateEnderPortal")
+        archiveVersion.set(project.version.toString())
+        archiveClassifier.set("")
+        exclude("META-INF/*")
+        duplicatesStrategy = DuplicatesStrategy.EXCLUDE
+        mergeServiceFiles()
+    }
+
+    build {
+        dependsOn(shadowJar)
+    }
+
+    runServer {
+        dependsOn(shadowJar)
+        val run = file(providers.gradleProperty("server.run.dir").orElse("run"))
+        runDirectory.set(run)
+
+        doFirst {
+            run.resolve("eula.txt").writeText("eula=true")
+
+            val pl = run.resolve("plugins")
+            pl.mkdirs()
+            copy {
+                from(projectDir.resolve("build/libs")) {
+                    include("${name}-${version}.jar")
+                }
+                into(pl)
+            }
+        }
+
+        jvmArgs(
+            "-Dfile.encoding=UTF-8",
+            "-Dsun.jnu.encoding=UTF-8",
+            "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005",
+            "-Dnet.kyori.adventure.text.warn_when_legacy_formatting_detected=false"
         )
+        maxHeapSize = "4G"
+        minecraftVersion("1.21.11")
     }
 }
 
-tasks.named<ShadowJar>("shadowJar") {
-    archiveVersion.set(project.version.toString())
-    archiveClassifier.set("")
-    relocate("net.byteflux.libby", "io.github.balugaq.libraries.libby")
-}
-
-val sourcesJar = tasks.register<Jar>("sourcesJar") {
-    archiveClassifier.set("sources")
-    from(sourceSets.main.get().allSource)
-}
-
-val javadocJar = tasks.register<Jar>("javadocJar") {
-    archiveClassifier.set("javadoc")
-    from(tasks.named<Javadoc>("javadoc"))
-}
-
-tasks.build {
-    dependsOn(tasks.named("shadowJar"))
-}
-
-tasks.runServer {
-    dependsOn(tasks.named("shadowJar"))
-    val run = file(providers.gradleProperty("server.run.dir").orElse("run"))
-    runDirectory.set(run)
-
-    doFirst {
-        run.resolve("eula.txt").writeText("eula=true")
-
-        val pl = run.resolve("plugins")
-        pl.mkdirs()
-        copy {
-            from(projectDir.resolve("build/libs")) {
-                include("${name}-${version}.jar")
-            }
-            into(pl)
-        }
-    }
-
-    jvmArgs(
-        "-Dfile.encoding=UTF-8",
-        "-Dsun.jnu.encoding=UTF-8",
-        "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5001",
-        "-Dnet.kyori.adventure.text.warn_when_legacy_formatting_detected=false"
-    )
-    maxHeapSize = "4G"
-    minecraftVersion("1.20.1")
-}
-
-publishing {
-    repositories {
-        maven {
-            name = "Central"
-            url = uri("https://central.sonatype.com/api/v1/publisher")
-        }
-    }
-    publications {
-        create<MavenPublication>("mavenJava") {
-            artifact(tasks.named("shadowJar"))
-            // Maven Central 发布硬性要求：附带 sources / javadoc 构件
-            artifact(sourcesJar)
-            artifact(javadocJar)
-
-            pom {
-                name = "${name}"
-                description = "This is MyProject's description"
-                url = "https://github.com/balugaq/${name}"
-                licenses {
-                    license {
-                        name = "MIT License"
-                        url  = "https://opensource.org/licenses/MIT"
-                    }
-                }
-                developers {
-                    developer {
-                        id = "balugaq"
-                        name = "balugaq"
-                        email = "balugaq@qq.com"
-                    }
-                }
-                scm {
-                    connection = "scm:git:https://github.com/balugaq/${name}.git"
-                    developerConnection = "scm:git:ssh://github.com/balugaq/${name}.git"
-                    url = "https://github.com/balugaq/${name}"
-                }
-            }
-        }
-    }
-}
-
-// 签名配置
-signing {
-    // 从环境变量或 gradle.properties 读取敏感信息；
-    // 仅在提供了签名密钥时才启用签名，避免本地 build/无密钥时配置失败
-    val signingKey = providers.gradleProperty("signingKey")
-        .orElse(providers.systemProperty("signingKey"))
-        .orElse(providers.environmentVariable("SIGNING_KEY"))
-        .orNull
-
-    val signingPassword = providers.gradleProperty("signingPassword")
-        .orElse(providers.systemProperty("signingPassword"))
-        .orElse(providers.environmentVariable("SIGNING_PASSWORD"))
-        .orNull
-    if (signingKey != null && signingPassword != null) {
-        useInMemoryPgpKeys(signingKey, signingPassword)
-        sign(publishing.publications["mavenJava"])
-    } else {
-        // 未提供签名密钥（例如本地开发构建），跳过签名
-    }
-}
+// Set default tasks
+defaultTasks("clean", "build")
